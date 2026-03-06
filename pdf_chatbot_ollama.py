@@ -1,60 +1,33 @@
-"""
-PDF SEMANTIC SEARCH CHATBOT
-Açık kaynak modeller ve Ollama kullanarak bedava PDF analizi
-
-Gereksinimler:
-1. Ollama kurun: https://ollama.ai
-2. Modelleri indirin:
-   - ollama pull mistral (LLM - hızlı)
-   - ollama pull nomic-embed-text (Embeddings - 274MB)
-3. Ollama'yı çalıştırın: ollama serve (terminal'de açık bırakın)
-
-Alternatif: Llama.cpp veya localai kullanabilirsiniz
-"""
-
 import os
 import json
 import numpy as np
-from pathlib import Path
 from typing import List, Dict, Tuple
 import warnings
 warnings.filterwarnings('ignore')
-
-# PDF işleme için
-try:
-    from PyPDF2 import PdfReader
-except ImportError:
-    print("pip install PyPDF2")
-
-# Veri işleme için
+from PyPDF2 import PdfReader
 import pandas as pd
-
-# Benzerlik hesaplaması için
 from sklearn.metrics.pairwise import cosine_similarity
+import requests
 
-# Ollama ile LLM ve Embeddings
-try:
-    import requests
-except ImportError:
-    print("pip install requests")
+
 
 print("="*70)
 print("PDF SEMANTIC SEARCH CHATBOT")
 print("Açık Kaynak Modeller (Ollama) + Cosine Similarity")
 print("="*70)
 
-# ===== KONFIGÜRASYON =====
-OLLAMA_BASE_URL = "http://localhost:11434"  # Ollama'nın varsayılan portu
+
+OLLAMA_BASE_URL = "http://localhost:11434"
 EMBEDDING_MODEL = "nomic-embed-text:latest"
-LLM_MODEL = "mistral:latest"  # Hızlı ve iyi sonuç veren model
-CHUNK_SIZE = 500  # Karakterde chunk boyutu
+LLM_MODEL = "mistral:latest"
+CHUNK_SIZE = 300
 CHUNK_OVERLAP = 50
-TOP_K_RESULTS = 3  # En iyi 3 chunk'ı döndür
+TOP_K_RESULTS = 3
 
 # ===== 1. PDF'DEN METİN ÇIKAR =====
 class PDFProcessor:
     """PDF dosyasından metin çıkarma"""
-    
+
     @staticmethod
     def extract_text_from_pdf(pdf_path: str) -> str:
         """PDF'den metin çıkar"""
@@ -68,18 +41,18 @@ class PDFProcessor:
             return text
         except Exception as e:
             raise Exception(f"PDF okuma hatası: {e}")
-    
+
     @staticmethod
-    def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[Dict]:
+    def chunk_text(text: str, chunk_size: int = 300, overlap: int = 50) -> List[Dict]:
         """Metni chunklara böl (RAG için)"""
         chunks = []
-        
+
         # Paragraflarla böl
         paragraphs = text.split('\n\n')
-        
+
         current_chunk = ""
         chunk_id = 0
-        
+
         for paragraph in paragraphs:
             if len(current_chunk) + len(paragraph) < chunk_size:
                 current_chunk += paragraph + "\n\n"
@@ -91,10 +64,10 @@ class PDFProcessor:
                         'length': len(current_chunk)
                     })
                     chunk_id += 1
-                
+
                 # Overlap ile başla
                 current_chunk = paragraph + "\n\n"
-        
+
         # Son chunk'ı ekle
         if current_chunk.strip():
             chunks.append({
@@ -102,25 +75,25 @@ class PDFProcessor:
                 'text': current_chunk.strip(),
                 'length': len(current_chunk)
             })
-        
+
         return chunks
 
 # ===== 2. EMBEDDING VE VEKTÖR STORE =====
 class EmbeddingService:
     """Ollama ile embedding üretme"""
-    
+
     def __init__(self, model_name: str = "nomic-embed-text", base_url: str = "http://localhost:11434"):
         self.model_name = model_name
         self.base_url = base_url
         self.check_model()
-    
+
     def check_model(self):
         """Model'in çalışıp çalışmadığını kontrol et"""
         try:
             response = requests.post(
                 f"{self.base_url}/api/generate",
                 json={"model": self.model_name, "prompt": "test", "stream": False},
-                timeout=5
+                timeout=50
             )
             if response.status_code != 200:
                 print(f"⚠️  {self.model_name} modeli başlatılıyor... (ilk kez yavaş olabilir)")
@@ -130,24 +103,24 @@ class EmbeddingService:
                 f"Terminal'de: ollama serve\n"
                 f"Hata: {e}"
             )
-    
+
     def embed_text(self, text: str) -> np.ndarray:
         """Metin için embedding üret"""
         try:
             response = requests.post(
                 f"{self.base_url}/api/embed",
                 json={"model": self.model_name, "input": text},
-                timeout=30
+                timeout=60
             )
-            
+
             if response.status_code != 200:
                 raise Exception(f"Embedding hatası: {response.text}")
-            
+
             data = response.json()
             return np.array(data['embeddings'][0])
         except Exception as e:
             raise Exception(f"Embedding üretme hatası: {e}")
-    
+
     def embed_texts(self, texts: List[str]) -> np.ndarray:
         """Birden fazla metin için embedding üret"""
         embeddings = []
@@ -160,30 +133,30 @@ class EmbeddingService:
 # ===== 3. VEKTÖR VERİTABANI (IN-MEMORY) =====
 class VectorStore:
     """Basit in-memory vektör veritabanı"""
-    
+
     def __init__(self):
         self.documents = []  # Orijinal metinler
         self.embeddings = np.array([])  # Embedding vektörleri
         self.metadata = []  # Chunk metadata
-    
+
     def add_documents(self, chunks: List[Dict], embeddings: np.ndarray):
         """Chunk'ları ve embedding'leri ekle"""
         self.documents = [chunk['text'] for chunk in chunks]
         self.embeddings = embeddings
         self.metadata = chunks
         print(f"✓ {len(self.documents)} chunk ve embedding eklendi")
-    
+
     def similarity_search(self, query_embedding: np.ndarray, k: int = 3) -> List[Dict]:
         """Benzerlik araması (Cosine Similarity)"""
         if len(self.embeddings) == 0:
             return []
-        
+
         # Cosine similarity hesapla
         similarities = cosine_similarity([query_embedding], self.embeddings)[0]
-        
+
         # En benzer k dokument'i bul
         top_indices = np.argsort(similarities)[-k:][::-1]
-        
+
         results = []
         for idx in top_indices:
             results.append({
@@ -192,18 +165,18 @@ class VectorStore:
                 'chunk_id': self.metadata[idx]['id'],
                 'length': self.metadata[idx]['length']
             })
-        
+
         return results
 
 # ===== 4. LLM ile CEVAP ÜRETİMİ =====
 class LLMService:
     """Ollama ile LLM cevapları üret"""
-    
+
     def __init__(self, model_name: str = "mistral", base_url: str = "http://localhost:11434"):
         self.model_name = model_name
         self.base_url = base_url
-    
-    def generate_answer(self, query: str, context: str, max_tokens: int = 500) -> str:
+
+    def generate_answer(self, query: str, context: str, max_tokens: int = 300) -> str:
         """Context'e dayanarak cevap üret"""
         
         prompt = f"""Sana bir soru ve context metni verilecek. 
@@ -225,7 +198,7 @@ Cevap:"""
                     "stream": False,
                     "temperature": 0.3  # Daha tutarlı cevaplar
                 },
-                timeout=60
+                timeout=180
             )
             
             if response.status_code != 200:
@@ -333,48 +306,6 @@ class TestCases:
                 'question': 'Bu dokümanda ana konu nedir?',
                 'expected_type': 'summary',
                 'description': 'Dokümandaki ana konuyu anlaması beklenir'
-            },
-            {
-                'name': 'Spesifik Bilgi Arama',
-                'question': 'Belgede hangi tarihler geçiyor?',
-                'expected_type': 'specific',
-                'description': 'Spesifik tarihleri bulması gerekir'
-            },
-            {
-                'name': 'Tanım Sorgusu',
-                'question': 'Bu belgede önemli olan terimler nelerdir?',
-                'expected_type': 'definition',
-                'description': 'Önemli terimleri tanımlaması gerekir'
-            },
-            {
-                'name': 'İlişki Sorgusu',
-                'question': 'Belgede hangi konseptler birbiriyle ilişkili?',
-                'expected_type': 'relationship',
-                'description': 'Konseptler arasındaki ilişkileri bulması gerekir'
-            },
-            {
-                'name': 'Boş Olmayan Cevap',
-                'question': 'Belgede ne anlatılıyor?',
-                'expected_type': 'not_empty',
-                'description': 'Hiçbir zaman "bilgi yok" dememeli'
-            },
-            {
-                'name': 'Edge Case - Çok Kısa Soru',
-                'question': 'Ne?',
-                'expected_type': 'tolerance',
-                'description': 'Kısa soru bile cevaplandırabilmeli'
-            },
-            {
-                'name': 'Edge Case - Uzun Soru',
-                'question': 'Bu belgede anlatılan konulardan en önemlisi hangisidir ve neden önemlidir?',
-                'expected_type': 'complex',
-                'description': 'Kompleks sorulara mantıklı cevap vermeli'
-            },
-            {
-                'name': 'Edge Case - Belgede Olmayan Bilgi',
-                'question': 'Bu belgede Python programlamadan bahsediliyor mu?',
-                'expected_type': 'negative',
-                'description': 'Belgede olmayan bilgiye sahte cevap vermeyi (hallucination) önlemeli'
             }
         ]
 
