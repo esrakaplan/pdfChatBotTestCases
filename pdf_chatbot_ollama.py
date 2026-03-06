@@ -9,10 +9,7 @@ from result_writer import ResultWriter
 
 print("="*70)
 print("PDF SEMANTIC SEARCH CHATBOT")
-print("Open Source Models (Ollama) + Cosine Similarity")
 print("="*70)
-
-
 
 def main():
 

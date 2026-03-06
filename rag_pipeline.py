@@ -1,84 +1,69 @@
 import os
-import json
-import numpy as np
-from typing import List, Dict
+from typing import Dict
 import warnings
-
 from embedding_service import EmbeddingService
 from llm_service import LLMService
 from pdf_processor import PDFProcessor
 from vector_store import VectorStore
-
 warnings.filterwarnings('ignore')
-from PyPDF2 import PdfReader
-import pandas as pd
-from sklearn.metrics.pairwise import cosine_similarity
-import requests
-from config import CHUNK_SIZE, CHUNK_OVERLAP,OLLAMA_BASE_URL,EMBEDDING_MODEL,LLM_MODEL,CHUNK_SIZE,CHUNK_OVERLAP,TOP_K_RESULTS
+
+from config import OLLAMA_BASE_URL,EMBEDDING_MODEL,LLM_MODEL,CHUNK_SIZE,CHUNK_OVERLAP,TOP_K_RESULTS
 
 
 class RagPipeline:
     """Retrieval Augmented Generation Pipeline"""
 
     def __init__(self):
-        print("\n[BAŞLATMA] RAG Pipeline kuruluyor...")
+        print("\n[STARTING] RAG Pipeline is being installed...")
         self.embedding_service = EmbeddingService(EMBEDDING_MODEL, OLLAMA_BASE_URL)
         self.llm_service = LLMService(LLM_MODEL, OLLAMA_BASE_URL)
         self.vector_store = VectorStore()
-        print("✓ Pipeline hazır\n")
+        print("✓ Pipeline ready\n")
 
     def load_pdf(self, pdf_path: str):
-        """PDF dosyasını yükle ve işle"""
-        print(f"\n[PDF YÜKLEME] {pdf_path}")
+        print(f"\n[PDF LOAD] {pdf_path}")
 
         if not os.path.exists(pdf_path):
-            raise FileNotFoundError(f"PDF bulunamadı: {pdf_path}")
+            raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
-        # Metni çıkar
-        print("  Metin çıkarılıyor...")
+        print("Extracting text...")
         text = PDFProcessor.extract_text_from_pdf(pdf_path)
-        print(f"  ✓ {len(text)} karakter çıkarıldı")
+        print(f" ✓ {len(text)} characters removed")
 
-        # Chunk'lara böl
-        print("  Metin chunk'lanıyor...")
+        print(" Chunking text...")
         chunks = PDFProcessor.chunk_text(text, CHUNK_SIZE, CHUNK_OVERLAP)
-        print(f"  ✓ {len(chunks)} chunk oluşturuldu")
+        print(f" ✓ {len(chunks)} chunk created")
 
-        # Embedding'ler üret
-        print("  Embedding'ler üretiliyor...")
+        # Generate Embeddings
+        print("Embeddings are being produced...")
         chunk_texts = [chunk['text'] for chunk in chunks]
         embeddings = self.embedding_service.embed_texts(chunk_texts)
 
-        # Vector store'a ekle
-        print("  Vector store'a ekleniyor...")
+        # Add to Vector store
+        print("Adding to vector store...")
         self.vector_store.add_documents(chunks, embeddings)
 
     def query(self, question: str, debug: bool = False) -> Dict:
-        """Soruya cevap ver"""
-        print(f"\n[SORU] {question}")
+        print(f"\n[QUESTION] {question}")
 
-        # Sorunun embedding'ini üret
         query_embedding = self.embedding_service.embed_text(question)
 
-        # Benzer chunk'ları bul
         search_results = self.vector_store.similarity_search(query_embedding, k=TOP_K_RESULTS)
 
         if not search_results:
             return {
                 'query': question,
-                'answer': 'Dokümanda ilgili bilgi bulunamadı',
+                'answer': 'No relevant information found in the document',
                 'sources': [],
                 'debug': {}
             }
 
-        # Context'i birleştir
         context = "\n\n---\n\n".join([
-            f"[Chunk {r['chunk_id']} - Benzerlik: {r['similarity']:.2%}]\n{r['text']}"
+            f"[Chunk {r['chunk_id']} - Similarity: {r['similarity']:.2%}]\n{r['text']}"
             for r in search_results
         ])
 
-        # LLM ile cevap üret
-        print("[CEVAP ÜRETİLİYOR]")
+        print("[PRODUCING ANSWER]")
         answer = self.llm_service.generate_answer(question, context)
 
         result = {
