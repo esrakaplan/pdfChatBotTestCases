@@ -3,28 +3,24 @@ from typing import List, Dict
 from config import CHUNK_SIZE, CHUNK_OVERLAP
 
 class PDFProcessor:
-    """PDF dosyasından metin çıkarma"""
 
     @staticmethod
     def extract_text_from_pdf(pdf_path: str) -> str:
-        """PDF'den metin çıkar"""
         try:
             reader = PdfReader(pdf_path)
             text = ""
             for page_num in range(len(reader.pages)):
                 page = reader.pages[page_num]
-                text += f"\n[SAYFA {page_num + 1}]\n"
+                text += f"\n[Page {page_num + 1}]\n"
                 text += page.extract_text()
             return text
         except Exception as e:
-            raise Exception(f"PDF okuma hatası: {e}")
+            raise Exception(f"PDF read exception: {e}")
 
     @staticmethod
-    def chunk_text(text: str, chunk_size: int = 300, overlap: int = 50) -> List[Dict]:
-        """Metni chunklara böl (RAG için)"""
+    def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> List[Dict]:
         chunks = []
 
-        # Paragraflarla böl
         paragraphs = text.split('\n\n')
 
         current_chunk = ""
@@ -42,10 +38,8 @@ class PDFProcessor:
                     })
                     chunk_id += 1
 
-                # Overlap ile başla
                 current_chunk = paragraph + "\n\n"
 
-        # Son chunk'ı ekle
         if current_chunk.strip():
             chunks.append({
                 'id': chunk_id,

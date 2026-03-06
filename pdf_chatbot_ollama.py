@@ -1,18 +1,9 @@
 import os
-import json
-import numpy as np
-from typing import List, Dict
 import warnings
-
 from rag_pipeline import RagPipeline
 from test_cases import TestCases
-
 warnings.filterwarnings('ignore')
-from PyPDF2 import PdfReader
 import pandas as pd
-from sklearn.metrics.pairwise import cosine_similarity
-import requests
-from config import CHUNK_SIZE, CHUNK_OVERLAP,OLLAMA_BASE_URL,EMBEDDING_MODEL,LLM_MODEL,CHUNK_SIZE,CHUNK_OVERLAP,TOP_K_RESULTS
 from result_writer import ResultWriter
 
 

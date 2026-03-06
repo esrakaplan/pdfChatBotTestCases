@@ -1,3 +1,10 @@
+"""
+1️⃣ Ollama’ya bağlanır
+2️⃣ Metni embedding vektörüne çevirir
+3️⃣ Birden fazla metni batch olarak embed eder
+4️⃣ Sonuçları NumPy vector olarak döner
+5️⃣ RAG pipeline’da semantic search için kullanılır
+"""
 import requests
 import numpy as np
 from typing import List
@@ -21,7 +28,7 @@ class EmbeddingService:
                 timeout=MODEL_CONN_TIMEOUT
             )
             if response.status_code != 200:
-                print(f"⚠️  {self.model_name} model is starting... (may be slow on first run)")
+                print(f"⚠️  {self.model_name} model is starting...")
         except Exception as e:
             raise Exception(
                 f"Ollama connection error! Make sure Ollama is running:\n"
@@ -34,7 +41,7 @@ class EmbeddingService:
             response = requests.post(
                 f"{self.base_url}/api/embed",
                 json={"model": self.model_name, "input": text},
-                timeout=60
+                timeout=MODEL_CONN_TIMEOUT
             )
 
             if response.status_code != 200:
