@@ -2,7 +2,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import requests
-from config import OLLAMA_BASE_URL, LLM_MODEL, READ_TIMEOUT
+from config import OLLAMA_BASE_URL, LLM_MODEL, READ_TIMEOUT, MAX_TOKEN
 
 
 class LLMService:
@@ -12,9 +12,17 @@ class LLMService:
         self.model_name = model_name
         self.base_url = base_url
 
-    def generate_answer(self, query: str, context: str, max_tokens: int = 300) -> str:
-        prompt = f"""You will be given a question and a contextual text. 
-        Answer the question based on the information you find in the context. Context:{context} Question: {query} Answer:"""
+    def generate_answer(self, query: str, context: str, max_tokens: int = MAX_TOKEN) -> str:
+        prompt = f"""
+        Answer the question ONLY using the provided context.
+        If the answer is not in the context say:
+        "I could not find the answer in the document."
+        Context:
+        {context}
+        Question:
+        {query}
+        Answer:
+        """
 
         try:
             response = requests.post(
@@ -23,7 +31,8 @@ class LLMService:
                     "model": self.model_name,
                     "prompt": prompt,
                     "stream": False,
-                    "temperature": 0.3
+                    "temperature": 0.3,
+                    "num_predict": max_tokens
                 },
                 timeout=READ_TIMEOUT
             )
