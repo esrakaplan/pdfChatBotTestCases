@@ -2,33 +2,34 @@ import requests
 import numpy as np
 from typing import List
 
-class EmbeddingService:
-    """Ollama ile embedding üretme"""
+from config import OLLAMA_BASE_URL, EMBEDDING_MODEL, MODEL_CONN_TIMEOUT
 
-    def __init__(self, model_name: str = "nomic-embed-text", base_url: str = "http://localhost:11434"):
+
+class EmbeddingService:
+
+    def __init__(self, model_name: str = EMBEDDING_MODEL, base_url: str = OLLAMA_BASE_URL):
         self.model_name = model_name
         self.base_url = base_url
         self.check_model()
 
     def check_model(self):
-        """Model'in çalışıp çalışmadığını kontrol et"""
+        """Check if the model is running"""
         try:
             response = requests.post(
                 f"{self.base_url}/api/generate",
                 json={"model": self.model_name, "prompt": "test", "stream": False},
-                timeout=50
+                timeout=MODEL_CONN_TIMEOUT
             )
             if response.status_code != 200:
-                print(f"⚠️  {self.model_name} modeli başlatılıyor... (ilk kez yavaş olabilir)")
+                print(f"⚠️  {self.model_name} model is starting... (may be slow on first run)")
         except Exception as e:
             raise Exception(
-                f"Ollama bağlantı hatası! Ollama'yı çalıştırdığınızdan emin olun:\n"
-                f"Terminal'de: ollama serve\n"
-                f"Hata: {e}"
+                f"Ollama connection error! Make sure Ollama is running:\n"
+                f"Error: {e}"
             )
 
     def embed_text(self, text: str) -> np.ndarray:
-        """Metin için embedding üret"""
+        """Generate embedding for a single text"""
         try:
             response = requests.post(
                 f"{self.base_url}/api/embed",
@@ -37,18 +38,18 @@ class EmbeddingService:
             )
 
             if response.status_code != 200:
-                raise Exception(f"Embedding hatası: {response.text}")
+                raise Exception(f"Embedding error: {response.text}")
 
             data = response.json()
             return np.array(data['embeddings'][0])
         except Exception as e:
-            raise Exception(f"Embedding üretme hatası: {e}")
+            raise Exception(f"Embedding generation error: {e}")
 
     def embed_texts(self, texts: List[str]) -> np.ndarray:
-        """Birden fazla metin için embedding üret"""
+        """Generate embeddings for multiple texts"""
         embeddings = []
         for i, text in enumerate(texts):
             if i % 10 == 0:
-                print(f"  Embedding üretiliyor: {i}/{len(texts)}")
+                print(f"  Generating embeddings: {i}/{len(texts)}")
             embeddings.append(self.embed_text(text))
         return np.array(embeddings)

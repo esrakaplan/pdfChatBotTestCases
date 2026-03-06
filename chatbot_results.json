@@ -4,7 +4,7 @@
     {
       "test_name": "Basic Question",
       "question": "What is the main topic of this document?",
-      "answer": "The main topic of this document appears to be the VFTR RED Segment Upsell, specifically discussing documentation and development related to it.",
+      "answer": "The main topic of this document appears to be related to the VFTR RED Segment Upsell, which involves documentation and development processes. It also discusses how to handle participation rights in campaigns based on tariff start dates and red segments, with specific examples provided for better understanding.",
       "similarity": 0.5637,
       "test_type": "summary"
     }
