@@ -1,0 +1,65 @@
+{
+  "total_tests": 8,
+  "results": [
+    {
+      "test_name": "Temel Soru",
+      "question": "Bu dokümanda ana konu nedir?",
+      "answer": "LLM Hata: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=60)",
+      "similarity": 0.446,
+      "test_type": "summary"
+    },
+    {
+      "test_name": "Spesifik Bilgi Arama",
+      "question": "Belgede hangi tarihler geçiyor?",
+      "answer": "LLM Hata: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=60)",
+      "similarity": 0.4847,
+      "test_type": "specific"
+    },
+    {
+      "test_name": "Tanım Sorgusu",
+      "question": "Bu belgede önemli olan terimler nelerdir?",
+      "answer": "LLM Hata: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=60)",
+      "similarity": 0.4856,
+      "test_type": "definition"
+    },
+    {
+      "test_name": "İlişki Sorgusu",
+      "question": "Belgede hangi konseptler birbiriyle ilişkili?",
+      "answer": "LLM Hata: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=60)",
+      "similarity": 0.5068,
+      "test_type": "relationship"
+    },
+    {
+      "test_name": "Boş Olmayan Cevap",
+      "question": "Belgede ne anlatılıyor?",
+      "answer": "LLM Hata: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=60)",
+      "similarity": 0.4245,
+      "test_type": "not_empty"
+    },
+    {
+      "test_name": "Edge Case - Çok Kısa Soru",
+      "question": "Ne?",
+      "answer": "LLM Hata: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=60)",
+      "similarity": 0.4946,
+      "test_type": "tolerance"
+    },
+    {
+      "test_name": "Edge Case - Uzun Soru",
+      "question": "Bu belgede anlatılan konulardan en önemlisi hangisidir ve neden önemlidir?",
+      "answer": "LLM Hata: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=60)",
+      "similarity": 0.4578,
+      "test_type": "complex"
+    },
+    {
+      "test_name": "Edge Case - Belgede Olmayan Bilgi",
+      "question": "Bu belgede Python programlamadan bahsediliyor mu?",
+      "answer": "LLM Hata: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=60)",
+      "similarity": 0.4742,
+      "test_type": "negative"
+    }
+  ],
+  "summary": {
+    "avg_similarity": 0.471775,
+    "timestamp": "2026-03-06T15:55:50.503814"
+  }
+}
